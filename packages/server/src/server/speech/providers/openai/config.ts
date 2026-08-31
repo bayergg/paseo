@@ -5,7 +5,7 @@ import type { RequestedSpeechProviders } from "../../speech-types.js";
 import type { STTConfig } from "./stt.js";
 import type { TTSConfig } from "./tts.js";
 
-export const DEFAULT_OPENAI_REALTIME_TRANSCRIPTION_MODEL = "gpt-4o-transcribe";
+export const DEFAULT_OPENAI_REALTIME_TRANSCRIPTION_MODEL = "gpt-transcribe";
 export const DEFAULT_OPENAI_TTS_MODEL = "tts-1";
 
 export interface OpenAiSpeechProviderConfig {

@@ -75,13 +75,13 @@ The `language` field applies only to the OpenAI STT provider: set `features.dict
 
 ## OpenAI Speech Option
 
-You can switch dictation, voice STT, and voice TTS to OpenAI by setting provider fields to `openai` and providing `OPENAI_API_KEY`.
+Set the provider fields to `openai` and provide `OPENAI_API_KEY` to use OpenAI dictation, voice STT, and voice TTS. OpenAI dictation defaults to `gpt-transcribe`.
 
 ```json
 {
   "version": 1,
   "features": {
-    "dictation": { "stt": { "provider": "openai" } },
+    "dictation": { "stt": { "provider": "openai", "model": "gpt-transcribe" } },
     "voiceMode": {
       "stt": { "provider": "openai" },
       "tts": { "provider": "openai" }

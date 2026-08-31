@@ -4,6 +4,20 @@ import { PersistedConfigSchema } from "../../../persisted-config.js";
 import { resolveOpenAiSpeechConfig } from "./config.js";
 
 describe("resolveOpenAiSpeechConfig", () => {
+  test("defaults dictation to gpt-transcribe", () => {
+    const resolved = resolveOpenAiSpeechConfig({
+      env: { OPENAI_API_KEY: "sk-test" } as NodeJS.ProcessEnv,
+      persisted: PersistedConfigSchema.parse({}),
+      providers: {
+        dictationStt: { provider: "openai", explicit: true },
+        voiceStt: { provider: "local", explicit: false },
+        voiceTts: { provider: "local", explicit: false },
+      },
+    });
+
+    expect(resolved?.realtimeTranscriptionModel).toBe("gpt-transcribe");
+  });
+
   test("treats empty OPENAI_API_KEY as unset", () => {
     const persisted = PersistedConfigSchema.parse({});
     const env = {

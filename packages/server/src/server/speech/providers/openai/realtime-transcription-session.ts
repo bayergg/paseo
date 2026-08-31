@@ -18,6 +18,13 @@ type OpenAITurnDetection =
       eagerness?: "low" | "medium" | "high";
     };
 
+interface OpenAIInputTranscription {
+  model: string;
+  language?: string;
+  languages?: string[];
+  prompt?: string;
+}
+
 type OpenAIClientEvent =
   | {
       type: "session.update";
@@ -26,11 +33,7 @@ type OpenAIClientEvent =
         audio: {
           input: {
             format: { type: "audio/pcm"; rate: 24000 };
-            transcription: {
-              model: string;
-              language?: string;
-              prompt?: string;
-            };
+            transcription: OpenAIInputTranscription;
             turn_detection: OpenAITurnDetection;
           };
         };
@@ -124,6 +127,17 @@ export class OpenAIRealtimeTranscriptionSession
 
       ws.on("open", () => {
         this.logger.debug("OpenAI realtime transcription websocket connected");
+        const transcription: OpenAIInputTranscription = {
+          model: this.transcriptionModel,
+          ...(this.prompt ? { prompt: this.prompt } : {}),
+        };
+        if (this.language) {
+          if (this.transcriptionModel === "gpt-transcribe") {
+            transcription.languages = [this.language];
+          } else {
+            transcription.language = this.language;
+          }
+        }
         const update: OpenAIClientEvent = {
           type: "session.update",
           session: {
@@ -131,11 +145,7 @@ export class OpenAIRealtimeTranscriptionSession
             audio: {
               input: {
                 format: { type: "audio/pcm", rate: 24000 },
-                transcription: {
-                  model: this.transcriptionModel,
-                  ...(this.language ? { language: this.language } : {}),
-                  ...(this.prompt ? { prompt: this.prompt } : {}),
-                },
+                transcription,
                 turn_detection: this.turnDetection,
               },
             },
