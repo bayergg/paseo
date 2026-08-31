@@ -1,7 +1,12 @@
 import type pino from "pino";
 import { WebSocket } from "ws";
 import { EventEmitter } from "node:events";
+import { pcm16lePeakAbs } from "../../audio.js";
 import type { StreamingTranscriptionSession } from "../../speech-provider.js";
+
+const WHISPER_SILENCE_PEAK_THRESHOLD = 300;
+const WHISPER_SILENCE_FRAME_MS = 20;
+const WHISPER_MAX_CONSECUTIVE_SILENCE_MS = 500;
 
 type OpenAITurnDetection =
   | null
@@ -80,6 +85,9 @@ export class OpenAIRealtimeTranscriptionSession
   private ready: Promise<void> | null = null;
   private closing = false;
   private partialByItemId = new Map<string, string>();
+  private whisperPendingSilence: Buffer = Buffer.alloc(0);
+  private whisperFrameRemainder: Buffer = Buffer.alloc(0);
+  private whisperHasSpeech = false;
 
   constructor(params: {
     apiKey: string;
@@ -239,20 +247,37 @@ export class OpenAIRealtimeTranscriptionSession
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error("OpenAI realtime websocket not connected");
     }
-    const base64Audio = pcm16le.toString("base64");
-    const event: OpenAIClientEvent = { type: "input_audio_buffer.append", audio: base64Audio };
-    this.ws.send(JSON.stringify(event));
+    if (this.transcriptionModel === "whisper-1") {
+      this.appendWhisperPcm16(pcm16le);
+      return;
+    }
+
+    this.sendPcm16(pcm16le);
   }
 
   public commit(): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error("OpenAI realtime websocket not connected");
     }
+    if (this.transcriptionModel === "whisper-1") {
+      const audio: Buffer[] = [];
+      if (this.whisperFrameRemainder.length > 0) {
+        this.filterWhisperFrame(this.whisperFrameRemainder, audio);
+      }
+      if (this.whisperHasSpeech && this.whisperPendingSilence.length > 0) {
+        audio.push(this.whisperPendingSilence);
+      }
+      if (audio.length > 0) {
+        this.sendPcm16(Buffer.concat(audio));
+      }
+    }
+    this.resetWhisperSilenceFilter();
     const event: OpenAIClientEvent = { type: "input_audio_buffer.commit" };
     this.ws.send(JSON.stringify(event));
   }
 
   public clear(): void {
+    this.resetWhisperSilenceFilter();
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return;
     }
@@ -263,6 +288,7 @@ export class OpenAIRealtimeTranscriptionSession
   public close(): void {
     try {
       this.closing = true;
+      this.resetWhisperSilenceFilter();
       this.ws?.close();
     } catch {
       // no-op
@@ -270,5 +296,58 @@ export class OpenAIRealtimeTranscriptionSession
       this.ws = null;
       this.ready = null;
     }
+  }
+
+  private sendPcm16(pcm16le: Buffer): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      throw new Error("OpenAI realtime websocket not connected");
+    }
+    const event: OpenAIClientEvent = {
+      type: "input_audio_buffer.append",
+      audio: pcm16le.toString("base64"),
+    };
+    this.ws.send(JSON.stringify(event));
+  }
+
+  private appendWhisperPcm16(pcm16le: Buffer): void {
+    const frameBytes = Math.round(this.requiredSampleRate * 2 * (WHISPER_SILENCE_FRAME_MS / 1000));
+    const input =
+      this.whisperFrameRemainder.length > 0
+        ? Buffer.concat([this.whisperFrameRemainder, pcm16le])
+        : pcm16le;
+    const audio: Buffer[] = [];
+    let offset = 0;
+    while (input.length - offset >= frameBytes) {
+      this.filterWhisperFrame(input.subarray(offset, offset + frameBytes), audio);
+      offset += frameBytes;
+    }
+    this.whisperFrameRemainder = input.subarray(offset);
+    if (audio.length > 0) {
+      this.sendPcm16(Buffer.concat(audio));
+    }
+  }
+
+  private filterWhisperFrame(frame: Buffer, audio: Buffer[]): void {
+    if (pcm16lePeakAbs(frame) < WHISPER_SILENCE_PEAK_THRESHOLD) {
+      const maxSilenceBytes = Math.round(
+        this.requiredSampleRate * 2 * (WHISPER_MAX_CONSECUTIVE_SILENCE_MS / 1000),
+      );
+      const silence = Buffer.concat([this.whisperPendingSilence, frame]);
+      this.whisperPendingSilence = silence.subarray(Math.max(0, silence.length - maxSilenceBytes));
+      return;
+    }
+
+    if (this.whisperPendingSilence.length > 0) {
+      audio.push(this.whisperPendingSilence);
+      this.whisperPendingSilence = Buffer.alloc(0);
+    }
+    this.whisperHasSpeech = true;
+    audio.push(frame);
+  }
+
+  private resetWhisperSilenceFilter(): void {
+    this.whisperPendingSilence = Buffer.alloc(0);
+    this.whisperFrameRemainder = Buffer.alloc(0);
+    this.whisperHasSpeech = false;
   }
 }

@@ -77,6 +77,8 @@ The `language` field applies only to the OpenAI STT provider: set `features.dict
 
 Set the provider fields to `openai` and provide `OPENAI_API_KEY` to use OpenAI dictation, voice STT, and voice TTS. OpenAI dictation defaults to `gpt-transcribe`.
 
+Set the dictation model to `whisper-1` to use Whisper. Paseo limits consecutive quiet audio to 500 ms to reduce text generation during silence.
+
 ```json
 {
   "version": 1,
