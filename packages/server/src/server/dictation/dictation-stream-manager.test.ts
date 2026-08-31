@@ -57,11 +57,13 @@ class FakeRealtimeSession extends EventEmitter implements StreamingTranscription
 class FakeSttProvider implements SpeechToTextProvider {
   public readonly id = "fake";
   public lastLanguage?: string;
+  public lastPrompt?: string;
   constructor(private readonly session: FakeRealtimeSession) {}
   createSession(
     params: Parameters<SpeechToTextProvider["createSession"]>[0],
   ): StreamingTranscriptionSession {
     this.lastLanguage = params.language;
+    this.lastPrompt = params.prompt;
     return this.session;
   }
 }
@@ -80,16 +82,56 @@ const tick = async (): Promise<void> => {
 describe("DictationStreamManager (finish buffer-too-small tolerance)", () => {
   const env = {
     dictationDebug: process.env.PASEO_DICTATION_DEBUG,
+    transcriptionPrompt: process.env.PASEO_DICTATION_TRANSCRIPTION_PROMPT,
   };
 
   beforeEach(() => {
     vi.useFakeTimers();
     process.env.PASEO_DICTATION_DEBUG = "false";
+    delete process.env.PASEO_DICTATION_TRANSCRIPTION_PROMPT;
   });
 
   afterEach(() => {
     vi.useRealTimers();
     process.env.PASEO_DICTATION_DEBUG = env.dictationDebug;
+    if (env.transcriptionPrompt === undefined) {
+      delete process.env.PASEO_DICTATION_TRANSCRIPTION_PROMPT;
+    } else {
+      process.env.PASEO_DICTATION_TRANSCRIPTION_PROMPT = env.transcriptionPrompt;
+    }
+  });
+
+  it("does not send default transcription instructions", async () => {
+    const session = new FakeRealtimeSession();
+    const provider = new FakeSttProvider(session);
+    const manager = new DictationStreamManager({
+      logger: pino({ level: "silent" }),
+      emit: vi.fn(),
+      sessionId: "session-default-prompt",
+      stt: provider,
+    });
+
+    await manager.handleStart("dictation-default-prompt", "audio/pcm;rate=24000");
+
+    expect(provider.lastPrompt).toBeUndefined();
+    manager.cleanupAll();
+  });
+
+  it("passes explicit transcription context", async () => {
+    process.env.PASEO_DICTATION_TRANSCRIPTION_PROMPT = "Paseo, OpenCode";
+    const session = new FakeRealtimeSession();
+    const provider = new FakeSttProvider(session);
+    const manager = new DictationStreamManager({
+      logger: pino({ level: "silent" }),
+      emit: vi.fn(),
+      sessionId: "session-explicit-prompt",
+      stt: provider,
+    });
+
+    await manager.handleStart("dictation-explicit-prompt", "audio/pcm;rate=24000");
+
+    expect(provider.lastPrompt).toBe("Paseo, OpenCode");
+    manager.cleanupAll();
   });
 
   it("treats buffer-too-small as benign and finalizes with existing transcripts", async () => {
