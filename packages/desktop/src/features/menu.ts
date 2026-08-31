@@ -91,6 +91,14 @@ function buildApplicationMenuTemplate(
         { role: "copy" },
         { role: "paste" },
         { role: "selectAll" },
+        { type: "separator" },
+        {
+          label: "Find",
+          accelerator: "CmdOrCtrl+F",
+          click: withBrowserWindow((win) => {
+            win.webContents.send("paseo:event:find-in-page-open", null);
+          }),
+        },
       ],
     },
     {

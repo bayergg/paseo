@@ -77,6 +77,18 @@ export interface DesktopMenuBridge {
   showContextMenu?: (input?: { kind?: "terminal"; hasSelection?: boolean }) => Promise<void>;
 }
 
+export interface DesktopFindInPageBridge {
+  find: (query: string, options: { forward: boolean; findNext: boolean }) => Promise<number>;
+  stop: () => Promise<void>;
+}
+
+export interface DesktopFindInPageResult {
+  requestId: number;
+  activeMatchOrdinal: number;
+  matches: number;
+  finalUpdate: boolean;
+}
+
 export interface DesktopWindowControlsOverlayUpdate {
   height?: number;
   backgroundColor?: string;
@@ -138,6 +150,7 @@ export interface DesktopHostBridge {
   editor?: DesktopEditorBridge;
   webUtils?: DesktopWebUtilsBridge;
   menu?: DesktopMenuBridge;
+  findInPage?: DesktopFindInPageBridge;
   browser?: DesktopBrowserBridge;
 }
 

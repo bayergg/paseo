@@ -73,6 +73,11 @@ contextBridge.exposeInMainWorld("paseoDesktop", {
     showContextMenu: (input?: Record<string, unknown>) =>
       ipcRenderer.invoke("paseo:menu:showContextMenu", input),
   },
+  findInPage: {
+    find: (query: string, options: { forward: boolean; findNext: boolean }) =>
+      ipcRenderer.invoke("paseo:find-in-page:find", { query, ...options }) as Promise<number>,
+    stop: () => ipcRenderer.invoke("paseo:find-in-page:stop") as Promise<void>,
+  },
   browser: {
     setWorkspaceActiveBrowser: (browserId: string | null) =>
       ipcRenderer.invoke("paseo:browser:set-workspace-active-browser", browserId),

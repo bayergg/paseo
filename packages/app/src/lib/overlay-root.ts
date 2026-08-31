@@ -22,4 +22,5 @@ export function getOverlayRoot(): HTMLElement {
 export const OVERLAY_Z = {
   modal: 10,
   toast: 20,
+  find: 30,
 } as const;

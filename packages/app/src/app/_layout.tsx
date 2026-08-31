@@ -25,6 +25,7 @@ import { StyleSheet, UnistylesRuntime, useUnistyles } from "react-native-unistyl
 import { CommandCenter } from "@/components/command-center";
 import { WorktreeSetupCalloutSource } from "@/components/worktree-setup-callout-source";
 import { DownloadToast } from "@/components/download-toast";
+import { FindInPageBar } from "@/components/find-in-page-bar";
 import { QuittingOverlay } from "@/components/quitting-overlay";
 import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
 import { LeftSidebar } from "@/components/left-sidebar";
@@ -465,6 +466,7 @@ function AppContainer({
       <FloatingPanelPortalHost />
       {isCompactLayout && chromeEnabled && <LeftSidebar selectedAgentId={selectedAgentId} />}
       <DownloadToast />
+      <FindInPageBar />
       <RosettaCalloutSource />
       <UpdateCalloutSource />
       <WorktreeSetupCalloutSource />
