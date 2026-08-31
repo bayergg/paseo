@@ -90,6 +90,7 @@ interface DictationStreamState {
   awaitingFinalCommit: boolean;
   finishRequested: boolean;
   finishSealed: boolean;
+  finalizing: boolean;
   finalSeq: number | null;
   finalTimeout: ReturnType<typeof setTimeout> | null;
 }
@@ -308,6 +309,7 @@ export class DictationStreamManager {
       awaitingFinalCommit: false,
       finishRequested: false,
       finishSealed: false,
+      finalizing: false,
       finalSeq: null,
       finalTimeout: null,
     });
@@ -710,6 +712,9 @@ export class DictationStreamManager {
     if (state.awaitingFinalCommit) {
       return;
     }
+    if (state.finalizing) {
+      return;
+    }
 
     const committedSet = new Set(state.committedSegmentIds);
     const orderedSegmentIds: string[] = [...state.committedSegmentIds];
@@ -720,6 +725,7 @@ export class DictationStreamManager {
     }
 
     if (orderedSegmentIds.length === 0) {
+      state.finalizing = true;
       void (async () => {
         const debugRecordingPath = await this.maybePersistDictationStreamAudio(dictationId);
         this.emit({
@@ -759,6 +765,7 @@ export class DictationStreamManager {
       .join(" ")
       .trim();
 
+    state.finalizing = true;
     void (async () => {
       const debugRecordingPath = await this.maybePersistDictationStreamAudio(dictationId);
       this.emit({
