@@ -144,8 +144,8 @@ class ElectronAppUpdateRuntime implements AppUpdateRuntime {
   private configured = false;
 
   configure(input: AppUpdateRuntimeConfiguration): void {
-    autoUpdater.autoDownload = true;
-    autoUpdater.autoRunAppAfterInstall = true;
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoRunAppAfterInstall = false;
     // Paseo revalidates the current manifest before explicitly installing on quit.
     // Electron's built-in handler would install an older download without checking
     // whether a newer release has superseded it.
