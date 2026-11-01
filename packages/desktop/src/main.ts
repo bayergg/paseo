@@ -346,6 +346,18 @@ if (electronFlags) {
   log.info("[electron-flags]", electronFlags);
 }
 
+// Chromium's WebRTC gain control otherwise lowers the system microphone volume while you speak.
+const disabledFeatures = app.commandLine
+  .getSwitchValue("disable-features")
+  .split(",")
+  .filter(Boolean);
+if (!disabledFeatures.includes("WebRtcAllowInputVolumeAdjustment")) {
+  app.commandLine.appendSwitch(
+    "disable-features",
+    [...disabledFeatures, "WebRtcAllowInputVolumeAdjustment"].join(","),
+  );
+}
+
 if (process.platform === "linux") {
   // Keep the desktop/dock identity independent of the wrapped Electron filename.
   app.setDesktopName("Paseo.desktop");
